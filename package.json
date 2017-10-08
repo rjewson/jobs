@@ -1,0 +1,17 @@
+{
+  "name": "jobs",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "tape spec/test.js",
+    "webserver": "python -m SimpleHTTPServer 8000",
+    "compile": "rollup --config --watch"
+  },
+  "author": "rjewson@gmail.com",
+  "license": "ISC",
+  "devDependencies": {
+    "rollup": "^0.50.0",
+    "tape": "^4.8.0"
+  }
+}
