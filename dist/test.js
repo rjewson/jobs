@@ -1,5 +1,10 @@
 var test = require("tape");
-var { observable, observe, autorun, computed } = require("../dist/jobs.js");
+
+var _require = require("../dist/jobs.js"),
+    observable = _require.observable,
+    observe = _require.observe,
+    autorun = _require.autorun,
+    computed = _require.computed;
 
 // const fruit = observable({
 //   apples: 5,
@@ -21,17 +26,17 @@ var o = observable({
     return this.a + this.b;
   },
   get tax() {
-    console.log('get tax')
+    console.log('get tax');
     return this.total * 0.15;
   }
 });
 
-const obsTotal = autorun(() => {
-  console.log("Total=" + (o.total));
+var obsTotal = autorun(function () {
+  console.log("Total=" + o.total);
 });
 
-const obsTax = autorun(() => {
-  console.log("Tax=" + (o.tax));
+var obsTax = autorun(function () {
+  console.log("Tax=" + o.tax);
 });
 
 o.a = 2;

@@ -2,77 +2,111 @@
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
-const targets = new Map();
-const observables = new Map();
+// @ts-check
 
-const targePropertytToComputed = new Map();
+var targetPropertyToComputed = new Map();
 
-const computeds = new Map();
+var computeds = new Map();
 
-const dirtyComputations = new Set();
-let recomputeTimeout = null;
+var dirtyComputations = new Set();
+var recomputeTimeout = null;
 
-let runningComputation = null;
+var runningComputation = null;
 
-const observable = target => {
+var observable = function observable(target) {
   return toObservable(target);
 };
 
-const observe = () => {};
+var observe = function observe() {};
 
-const computed = fn => {
+var autorun = function autorun(fn) {
   computeds.set(fn, fn);
-  runComputed(fn);
-  return fn;
+  return runComputed(fn);
 };
 
-const runComputed = fn => {
+function computed(target, key, descriptor) {
+  // logger("--");
+  //const getter = Object.getOwnPropertyDescriptor(target, key).get;
+  // logger(getter);
+  //descriptor.get = getter;
+  return descriptor;
+}
+
+var runComputed = function runComputed(fn) {
   runningComputation = fn;
-  fn();
+  var result = fn();
   runningComputation = null;
+  return result;
 };
 
-const registerPropertyAccessToComputation = (target, key) => {
+/*
+ * Called whenever a property is accessed on an observable
+ * 
+ */
+
+var registerPropertyAccessToComputation = function registerPropertyAccessToComputation(target, key) {
   if (runningComputation) {
-    targePropertytToComputed.get(target).set(key, runningComputation);
+    var targetObj = targetPropertyToComputed.get(target);
+    var propertySet = targetObj.get(key);
+    if (!propertySet) {
+      propertySet = new Set();
+      targetObj.set(key, propertySet);
+      console.log(targetObj);
+    }
+    propertySet.add(runningComputation);
   }
 };
 
-const checkRecomputationNeeded = (target, key) => {
-  const computation = targePropertytToComputed.get(target).get(key);
-  if (computation) {
-    dirtyComputations.add(computation);
-    if (recomputeTimeout == null)
-      recomputeTimeout = setTimeout(recomputeComputations, 0);
+var checkRecomputationNeeded = function checkRecomputationNeeded(target, key) {
+  console.log('checking...');
+  var computations = targetPropertyToComputed.get(target).get(key);
+  console.log(computations);
+  if (computations) {
+    computations.forEach(dirtyComputations.add, dirtyComputations);
+    if (recomputeTimeout == null) recomputeTimeout = setTimeout(recomputeComputations, 0);
   }
 };
 
-const recomputeComputations = () => {
-  dirtyComputations.forEach(fn => fn());
+var recomputeComputations = function recomputeComputations() {
+  // console.log("Dirty");
+  // console.log(dirtyComputations);
+  dirtyComputations.forEach(function (fn) {
+    return fn();
+  });
   dirtyComputations.clear();
   recomputeTimeout = null;
 };
 
-const toObservable = target => {
-  const observable = new Proxy(target, {
-    get: (target, key, receiver) => {
-      const result = Reflect.get(target, key, receiver);
+var id = 0;
+var toObservable = function toObservable(targetObj) {
+  targetObj.__id__ = id++;
+  // console.log(targetObj);
+  var proxy = new Proxy(targetObj, {
+    get: function get(target, key, receiver) {
+      // console.log('!',target,key);
+      var result = Reflect.get(target, key, receiver);
       registerPropertyAccessToComputation(target, key);
-      console.log(`Get ${key.toString()} = ${result}`);
+      console.log('Get ' + key.toString() + ' = ' + result);
       return result;
     },
-    set: (target, key, value, receiver) => {
-      console.log(`Set ${key.toString()} = ${value}`);
+    set: function set(target, key, value, receiver) {
+      console.log('Set ' + key.toString() + ' = ' + value);
       checkRecomputationNeeded(target, key);
       return Reflect.set(target, key, value, receiver);
     }
   });
-  targets.set(target, observable);
-  observables.set(observable, target);
-  targePropertytToComputed.set(target, new Map());
-  return observable;
+  // targets.set(targetObj, proxy);
+  // observables.set(proxy, targetObj);
+  targetPropertyToComputed.set(targetObj, new Map());
+  return proxy;
 };
+
+
+
+// inside getter, on child property change, trigger dirty on self
 
 exports.observable = observable;
 exports.observe = observe;
+exports.autorun = autorun;
 exports.computed = computed;
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiam9icy5qcyIsInNvdXJjZXMiOlsiLi4vc3JjL2pvYnMuanMiXSwic291cmNlc0NvbnRlbnQiOlsiLy8gQHRzLWNoZWNrXG5cbmNvbnN0IHRhcmdldHMgPSBuZXcgTWFwKCk7XG5jb25zdCBvYnNlcnZhYmxlcyA9IG5ldyBNYXAoKTtcblxuY29uc3QgdGFyZ2V0UHJvcGVydHlUb0NvbXB1dGVkID0gbmV3IE1hcCgpO1xuXG5jb25zdCBjb21wdXRlZHMgPSBuZXcgTWFwKCk7XG5cbmNvbnN0IGRpcnR5Q29tcHV0YXRpb25zID0gbmV3IFNldCgpO1xubGV0IHJlY29tcHV0ZVRpbWVvdXQgPSBudWxsO1xuXG5sZXQgcnVubmluZ0NvbXB1dGF0aW9uID0gbnVsbDtcblxuZXhwb3J0IGNvbnN0IG9ic2VydmFibGUgPSB0YXJnZXQgPT4ge1xuICByZXR1cm4gdG9PYnNlcnZhYmxlKHRhcmdldCk7XG59O1xuXG5leHBvcnQgY29uc3Qgb2JzZXJ2ZSA9ICgpID0+IHt9O1xuXG5leHBvcnQgY29uc3QgYXV0b3J1biA9IGZuID0+IHtcbiAgY29tcHV0ZWRzLnNldChmbiwgZm4pO1xuICByZXR1cm4gcnVuQ29tcHV0ZWQoZm4pO1xufTtcblxudmFyIGxvZ2dlciA9IG0gPT4gY29uc29sZS5sb2cobSk7XG5cblxuZXhwb3J0IGZ1bmN0aW9uIGNvbXB1dGVkKHRhcmdldCwga2V5LCBkZXNjcmlwdG9yKSB7XG4gIC8vIGxvZ2dlcihcIi0tXCIpO1xuICAvL2NvbnN0IGdldHRlciA9IE9iamVjdC5nZXRPd25Qcm9wZXJ0eURlc2NyaXB0b3IodGFyZ2V0LCBrZXkpLmdldDtcbiAgLy8gbG9nZ2VyKGdldHRlcik7XG4gIC8vZGVzY3JpcHRvci5nZXQgPSBnZXR0ZXI7XG4gIHJldHVybiBkZXNjcmlwdG9yO1xufVxuXG5jb25zdCBydW5Db21wdXRlZCA9IGZuID0+IHtcbiAgcnVubmluZ0NvbXB1dGF0aW9uID0gZm47XG4gIGNvbnN0IHJlc3VsdCA9IGZuKCk7XG4gIHJ1bm5pbmdDb21wdXRhdGlvbiA9IG51bGw7XG4gIHJldHVybiByZXN1bHQ7XG59O1xuXG4vKlxuICogQ2FsbGVkIHdoZW5ldmVyIGEgcHJvcGVydHkgaXMgYWNjZXNzZWQgb24gYW4gb2JzZXJ2YWJsZVxuICogXG4gKi9cblxuY29uc3QgcmVnaXN0ZXJQcm9wZXJ0eUFjY2Vzc1RvQ29tcHV0YXRpb24gPSAodGFyZ2V0LCBrZXkpID0+IHtcbiAgaWYgKHJ1bm5pbmdDb21wdXRhdGlvbikge1xuICAgIGNvbnN0IHRhcmdldE9iaiA9IHRhcmdldFByb3BlcnR5VG9Db21wdXRlZC5nZXQodGFyZ2V0KTtcbiAgICBsZXQgcHJvcGVydHlTZXQgPSB0YXJnZXRPYmouZ2V0KGtleSk7XG4gICAgaWYgKCFwcm9wZXJ0eVNldCkge1xuICAgICAgcHJvcGVydHlTZXQgPSBuZXcgU2V0KCk7XG4gICAgICB0YXJnZXRPYmouc2V0KGtleSxwcm9wZXJ0eVNldCk7XG4gICAgICBjb25zb2xlLmxvZyh0YXJnZXRPYmopO1xuICAgIH1cbiAgICBwcm9wZXJ0eVNldC5hZGQocnVubmluZ0NvbXB1dGF0aW9uKTtcbiAgfVxufTtcblxuY29uc3QgY2hlY2tSZWNvbXB1dGF0aW9uTmVlZGVkID0gKHRhcmdldCwga2V5KSA9PiB7XG4gIGNvbnNvbGUubG9nKCdjaGVja2luZy4uLicpO1xuICBjb25zdCBjb21wdXRhdGlvbnMgPSB0YXJnZXRQcm9wZXJ0eVRvQ29tcHV0ZWQuZ2V0KHRhcmdldCkuZ2V0KGtleSk7XG4gIGNvbnNvbGUubG9nKGNvbXB1dGF0aW9ucyk7XG4gIGlmIChjb21wdXRhdGlvbnMpIHtcbiAgICBjb21wdXRhdGlvbnMuZm9yRWFjaChkaXJ0eUNvbXB1dGF0aW9ucy5hZGQsZGlydHlDb21wdXRhdGlvbnMpO1xuICAgIGlmIChyZWNvbXB1dGVUaW1lb3V0ID09IG51bGwpXG4gICAgICByZWNvbXB1dGVUaW1lb3V0ID0gc2V0VGltZW91dChyZWNvbXB1dGVDb21wdXRhdGlvbnMsIDApO1xuICB9XG59O1xuXG5jb25zdCByZWNvbXB1dGVDb21wdXRhdGlvbnMgPSAoKSA9PiB7XG4gIC8vIGNvbnNvbGUubG9nKFwiRGlydHlcIik7XG4gIC8vIGNvbnNvbGUubG9nKGRpcnR5Q29tcHV0YXRpb25zKTtcbiAgZGlydHlDb21wdXRhdGlvbnMuZm9yRWFjaChmbiA9PiBmbigpKTtcbiAgZGlydHlDb21wdXRhdGlvbnMuY2xlYXIoKTtcbiAgcmVjb21wdXRlVGltZW91dCA9IG51bGw7XG59O1xuXG5sZXQgaWQgPSAwO1xuY29uc3QgdG9PYnNlcnZhYmxlID0gdGFyZ2V0T2JqID0+IHtcbiAgdGFyZ2V0T2JqLl9faWRfXyA9IGlkKys7XG4gIC8vIGNvbnNvbGUubG9nKHRhcmdldE9iaik7XG4gIGNvbnN0IHByb3h5ID0gbmV3IFByb3h5KHRhcmdldE9iaiwge1xuICAgIGdldDogKHRhcmdldCwga2V5LCByZWNlaXZlcikgPT4ge1xuICAgICAgLy8gY29uc29sZS5sb2coJyEnLHRhcmdldCxrZXkpO1xuICAgICAgY29uc3QgcmVzdWx0ID0gUmVmbGVjdC5nZXQodGFyZ2V0LCBrZXksIHJlY2VpdmVyKTtcbiAgICAgIHJlZ2lzdGVyUHJvcGVydHlBY2Nlc3NUb0NvbXB1dGF0aW9uKHRhcmdldCwga2V5KTtcbiAgICAgIGNvbnNvbGUubG9nKGBHZXQgJHtrZXkudG9TdHJpbmcoKX0gPSAke3Jlc3VsdH1gKTtcbiAgICAgIHJldHVybiByZXN1bHQ7XG4gICAgfSxcbiAgICBzZXQ6ICh0YXJnZXQsIGtleSwgdmFsdWUsIHJlY2VpdmVyKSA9PiB7XG4gICAgICBjb25zb2xlLmxvZyhgU2V0ICR7a2V5LnRvU3RyaW5nKCl9ID0gJHt2YWx1ZX1gKTtcbiAgICAgIGNoZWNrUmVjb21wdXRhdGlvbk5lZWRlZCh0YXJnZXQsIGtleSk7XG4gICAgICByZXR1cm4gUmVmbGVjdC5zZXQodGFyZ2V0LCBrZXksIHZhbHVlLCByZWNlaXZlcik7XG4gICAgfVxuICB9KTtcbiAgLy8gdGFyZ2V0cy5zZXQodGFyZ2V0T2JqLCBwcm94eSk7XG4gIC8vIG9ic2VydmFibGVzLnNldChwcm94eSwgdGFyZ2V0T2JqKTtcbiAgdGFyZ2V0UHJvcGVydHlUb0NvbXB1dGVkLnNldCh0YXJnZXRPYmosIG5ldyBNYXAoKSk7XG4gIHJldHVybiBwcm94eTtcbn07XG5cbmNvbnN0IGl0ZXJhdGVPYmplY3RHcmFwaCA9IG5vZGUgPT4ge1xuICBpZiAoaXNBcnJheShub2RlKSkge1xuICB9IGVsc2UgaWYgKGlzT2JqZWN0KG5vZGUpKSB7XG4gIH1cbn07XG5cbmNvbnN0IGlzQXJyYXkgPSBvYmogPT4gQXJyYXkuaXNBcnJheTtcbmNvbnN0IGlzT2JqZWN0ID0gb2JqID0+IG9iaiA9PT0gT2JqZWN0KG9iaik7XG5cbi8vIGluc2lkZSBnZXR0ZXIsIG9uIGNoaWxkIHByb3BlcnR5IGNoYW5nZSwgdHJpZ2dlciBkaXJ0eSBvbiBzZWxmIl0sIm5hbWVzIjpbInRhcmdldFByb3BlcnR5VG9Db21wdXRlZCIsIk1hcCIsImNvbXB1dGVkcyIsImRpcnR5Q29tcHV0YXRpb25zIiwiU2V0IiwicmVjb21wdXRlVGltZW91dCIsInJ1bm5pbmdDb21wdXRhdGlvbiIsIm9ic2VydmFibGUiLCJ0b09ic2VydmFibGUiLCJ0YXJnZXQiLCJvYnNlcnZlIiwiYXV0b3J1biIsInNldCIsImZuIiwicnVuQ29tcHV0ZWQiLCJjb21wdXRlZCIsImtleSIsImRlc2NyaXB0b3IiLCJyZXN1bHQiLCJyZWdpc3RlclByb3BlcnR5QWNjZXNzVG9Db21wdXRhdGlvbiIsInRhcmdldE9iaiIsImdldCIsInByb3BlcnR5U2V0IiwibG9nIiwiYWRkIiwiY2hlY2tSZWNvbXB1dGF0aW9uTmVlZGVkIiwiY29tcHV0YXRpb25zIiwiZm9yRWFjaCIsInNldFRpbWVvdXQiLCJyZWNvbXB1dGVDb21wdXRhdGlvbnMiLCJjbGVhciIsImlkIiwiX19pZF9fIiwicHJveHkiLCJQcm94eSIsInJlY2VpdmVyIiwiUmVmbGVjdCIsInRvU3RyaW5nIiwidmFsdWUiXSwibWFwcGluZ3MiOiI7Ozs7QUFBQTs7QUFFQSxBQUdBLElBQU1BLDJCQUEyQixJQUFJQyxHQUFKLEVBQWpDOztBQUVBLElBQU1DLFlBQVksSUFBSUQsR0FBSixFQUFsQjs7QUFFQSxJQUFNRSxvQkFBb0IsSUFBSUMsR0FBSixFQUExQjtBQUNBLElBQUlDLG1CQUFtQixJQUF2Qjs7QUFFQSxJQUFJQyxxQkFBcUIsSUFBekI7O0FBRUEsQUFBTyxJQUFNQyxhQUFhLFNBQWJBLFVBQWEsU0FBVTtTQUMzQkMsYUFBYUMsTUFBYixDQUFQO0NBREs7O0FBSVAsQUFBTyxJQUFNQyxVQUFVLFNBQVZBLE9BQVUsR0FBTSxFQUF0Qjs7QUFFUCxBQUFPLElBQU1DLFVBQVUsU0FBVkEsT0FBVSxLQUFNO1lBQ2pCQyxHQUFWLENBQWNDLEVBQWQsRUFBa0JBLEVBQWxCO1NBQ09DLFlBQVlELEVBQVosQ0FBUDtDQUZLOztBQUtQLEFBR08sU0FBU0UsUUFBVCxDQUFrQk4sTUFBbEIsRUFBMEJPLEdBQTFCLEVBQStCQyxVQUEvQixFQUEyQzs7Ozs7U0FLekNBLFVBQVA7OztBQUdGLElBQU1ILGNBQWMsU0FBZEEsV0FBYyxLQUFNO3VCQUNIRCxFQUFyQjtNQUNNSyxTQUFTTCxJQUFmO3VCQUNxQixJQUFyQjtTQUNPSyxNQUFQO0NBSkY7Ozs7Ozs7QUFZQSxJQUFNQyxzQ0FBc0MsU0FBdENBLG1DQUFzQyxDQUFDVixNQUFELEVBQVNPLEdBQVQsRUFBaUI7TUFDdkRWLGtCQUFKLEVBQXdCO1FBQ2hCYyxZQUFZcEIseUJBQXlCcUIsR0FBekIsQ0FBNkJaLE1BQTdCLENBQWxCO1FBQ0lhLGNBQWNGLFVBQVVDLEdBQVYsQ0FBY0wsR0FBZCxDQUFsQjtRQUNJLENBQUNNLFdBQUwsRUFBa0I7b0JBQ0YsSUFBSWxCLEdBQUosRUFBZDtnQkFDVVEsR0FBVixDQUFjSSxHQUFkLEVBQWtCTSxXQUFsQjtjQUNRQyxHQUFSLENBQVlILFNBQVo7O2dCQUVVSSxHQUFaLENBQWdCbEIsa0JBQWhCOztDQVRKOztBQWFBLElBQU1tQiwyQkFBMkIsU0FBM0JBLHdCQUEyQixDQUFDaEIsTUFBRCxFQUFTTyxHQUFULEVBQWlCO1VBQ3hDTyxHQUFSLENBQVksYUFBWjtNQUNNRyxlQUFlMUIseUJBQXlCcUIsR0FBekIsQ0FBNkJaLE1BQTdCLEVBQXFDWSxHQUFyQyxDQUF5Q0wsR0FBekMsQ0FBckI7VUFDUU8sR0FBUixDQUFZRyxZQUFaO01BQ0lBLFlBQUosRUFBa0I7aUJBQ0hDLE9BQWIsQ0FBcUJ4QixrQkFBa0JxQixHQUF2QyxFQUEyQ3JCLGlCQUEzQztRQUNJRSxvQkFBb0IsSUFBeEIsRUFDRUEsbUJBQW1CdUIsV0FBV0MscUJBQVgsRUFBa0MsQ0FBbEMsQ0FBbkI7O0NBUE47O0FBV0EsSUFBTUEsd0JBQXdCLFNBQXhCQSxxQkFBd0IsR0FBTTs7O29CQUdoQkYsT0FBbEIsQ0FBMEI7V0FBTWQsSUFBTjtHQUExQjtvQkFDa0JpQixLQUFsQjtxQkFDbUIsSUFBbkI7Q0FMRjs7QUFRQSxJQUFJQyxLQUFLLENBQVQ7QUFDQSxJQUFNdkIsZUFBZSxTQUFmQSxZQUFlLFlBQWE7WUFDdEJ3QixNQUFWLEdBQW1CRCxJQUFuQjs7TUFFTUUsUUFBUSxJQUFJQyxLQUFKLENBQVVkLFNBQVYsRUFBcUI7U0FDNUIsYUFBQ1gsTUFBRCxFQUFTTyxHQUFULEVBQWNtQixRQUFkLEVBQTJCOztVQUV4QmpCLFNBQVNrQixRQUFRZixHQUFSLENBQVlaLE1BQVosRUFBb0JPLEdBQXBCLEVBQXlCbUIsUUFBekIsQ0FBZjswQ0FDb0MxQixNQUFwQyxFQUE0Q08sR0FBNUM7Y0FDUU8sR0FBUixVQUFtQlAsSUFBSXFCLFFBQUosRUFBbkIsV0FBdUNuQixNQUF2QzthQUNPQSxNQUFQO0tBTitCO1NBUTVCLGFBQUNULE1BQUQsRUFBU08sR0FBVCxFQUFjc0IsS0FBZCxFQUFxQkgsUUFBckIsRUFBa0M7Y0FDN0JaLEdBQVIsVUFBbUJQLElBQUlxQixRQUFKLEVBQW5CLFdBQXVDQyxLQUF2QzsrQkFDeUI3QixNQUF6QixFQUFpQ08sR0FBakM7YUFDT29CLFFBQVF4QixHQUFSLENBQVlILE1BQVosRUFBb0JPLEdBQXBCLEVBQXlCc0IsS0FBekIsRUFBZ0NILFFBQWhDLENBQVA7O0dBWFUsQ0FBZDs7OzJCQWdCeUJ2QixHQUF6QixDQUE2QlEsU0FBN0IsRUFBd0MsSUFBSW5CLEdBQUosRUFBeEM7U0FDT2dDLEtBQVA7Q0FwQkY7O0FBdUJBOzs7Ozs7Ozs7In0=
