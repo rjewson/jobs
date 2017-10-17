@@ -1,40 +1,69 @@
 var test = require("tape");
 var { observable, observe, autorun, computed } = require("../dist/jobs.js");
 
-// const fruit = observable({
-//   apples: 5,
-//   oranges: 5
-// });
+// test("Basic Test 1", (t) => {
+//   t.plan(2);
 
-// const totalFruit = autorun(() => {
-//   console.log("Total=" + (fruit.apples + fruit.oranges));
+//   let obs = observable({
+//     a: 1
+//   });
+
+//   const result = [1,2];
+//   let testRun = 0;
+
+//   autorun(() => {
+//     t.equal(obs.a,result[testRun++]);
+//   });
+
+//   setTimeout(() => {
+//     obs.a = 2;
+//   }, 1);
 // });
-//Logs 11
-// fruit.apples = 6;
 
 var o = observable({
   a: 1,
   b: 1,
+  c: [],
+  d: {
+    e:{
+      f: 10
+    }
+  },
   // @computed
   get total() {
-    console.log('get total');
     return this.a + this.b;
   },
   get tax() {
-    console.log('get tax')
     return this.total * 0.15;
+  },
+  get len() {
+    return this.c.length;
   }
 });
 
-const obsTotal = autorun(() => {
-  console.log("Total=" + (o.total));
-});
+// const obsTotal = autorun(() => {
+//   console.log("Total=" + (o.total));
+// },"Calc Total");
 
-const obsTax = autorun(() => {
-  console.log("Tax=" + (o.tax));
-});
+// const obsTax = autorun(() => {
+//   console.log("Tax=" + (o.tax));
+// },"Calc Tax");
 
-o.a = 2;
+// const obsLen = autorun(() => {
+//   console.log("Len=" + o.len);
+// }, "Calc Len");
+
+const obsNested = autorun(() => {
+  console.log("F=" + o.d.e.f);
+}, "Nested");
+o.d.e.f = 11;
+// o.a = 2;
+
+o.c.push(1);
+o.c.push(1);
+
+// console.log(o.unobserve());
+//o.c.pop();
 
 // console.log("----");
 // console.log(o.total);

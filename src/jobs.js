@@ -1,15 +1,12 @@
 // @ts-check
 
-const targets = new Map();
-const observables = new Map();
-
 const targetPropertyToComputed = new Map();
 
 const computeds = new Map();
 
 const dirtyComputations = new Set();
-let recomputeTimeout = null;
 
+let recomputeTimeout = null;
 let runningComputation = null;
 
 export const observable = target => {
@@ -18,32 +15,32 @@ export const observable = target => {
 
 export const observe = () => {};
 
-export const autorun = fn => {
-  computeds.set(fn, fn);
-  return runComputed(fn);
+export const unobserve = (target) => {
+  console.log("ToDo");
+  return target;
+}
+
+export const autorun = (fn,name="unknown") => {
+  const observer = {fn,name};
+  computeds.set(fn, observer);
+  return runComputed(observer);
 };
 
 var logger = m => console.log(m);
 
-
 export function computed(target, key, descriptor) {
-  // logger("--");
-  //const getter = Object.getOwnPropertyDescriptor(target, key).get;
-  // logger(getter);
-  //descriptor.get = getter;
   return descriptor;
 }
 
-const runComputed = fn => {
-  runningComputation = fn;
-  const result = fn();
+const runComputed = observer => {
+  runningComputation = observer;
+  const result = observer.fn();
   runningComputation = null;
   return result;
 };
 
 /*
  * Called whenever a property is accessed on an observable
- * 
  */
 
 const registerPropertyAccessToComputation = (target, key) => {
@@ -53,16 +50,16 @@ const registerPropertyAccessToComputation = (target, key) => {
     if (!propertySet) {
       propertySet = new Set();
       targetObj.set(key,propertySet);
-      console.log(targetObj);
     }
     propertySet.add(runningComputation);
+    console.log(targetObj);    
   }
 };
 
 const checkRecomputationNeeded = (target, key) => {
-  console.log('checking...');
+  // console.log('checking...');
   const computations = targetPropertyToComputed.get(target).get(key);
-  console.log(computations);
+  // console.log(computations);
   if (computations) {
     computations.forEach(dirtyComputations.add,dirtyComputations);
     if (recomputeTimeout == null)
@@ -70,10 +67,11 @@ const checkRecomputationNeeded = (target, key) => {
   }
 };
 
+/*
+ * Rerun all 'dirty' computations
+ */
 const recomputeComputations = () => {
-  // console.log("Dirty");
-  // console.log(dirtyComputations);
-  dirtyComputations.forEach(fn => fn());
+  dirtyComputations.forEach(observer => observer.fn());
   dirtyComputations.clear();
   recomputeTimeout = null;
 };
@@ -85,19 +83,40 @@ const toObservable = targetObj => {
   const proxy = new Proxy(targetObj, {
     get: (target, key, receiver) => {
       // console.log('!',target,key);
+      if (key === "__target__") {
+        return target;
+      }
+      if (key === "unobserve") {
+        return () => unobserve(target);
+      }
       const result = Reflect.get(target, key, receiver);
+      if (result && Object.getOwnPropertyDescriptor(target, key).get) {
+        //TODO handle this?
+      }
       registerPropertyAccessToComputation(target, key);
-      console.log(`Get ${key.toString()} = ${result}`);
+      if (runningComputation && isObject(result)) {
+        console.log("make nested:"+key.toString());
+        const observableResult = observable(result);
+        Reflect.set(target, key, observableResult, receiver);
+        return observableResult
+      }
+      //console.log(`Get ${key.toString()} = ${result}`);
       return result;
     },
     set: (target, key, value, receiver) => {
-      console.log(`Set ${key.toString()} = ${value}`);
+      // console.log(`Set ${key.toString()} = ${value}`);
       checkRecomputationNeeded(target, key);
-      return Reflect.set(target, key, value, receiver);
+      const result = Reflect.set(target, key, value, receiver);
+      // console.log(result);
+      return result;
     }
+    // ,apply: (target, thisArg, argumentsList) => {
+    //   console.log("!! target");
+    //   // if (target === "unobserve") {
+    //   //   return unobserve(target.__target__);
+    //   // }
+    // }
   });
-  // targets.set(targetObj, proxy);
-  // observables.set(proxy, targetObj);
   targetPropertyToComputed.set(targetObj, new Map());
   return proxy;
 };
