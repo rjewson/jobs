@@ -1,36 +1,76 @@
 // @ts-check
 
+/*
+ * Javascript Observable
+ * 
+ * a lightweight proxy based observable implementation
+ * 
+ */
+
+/*
+ * A badly named map:
+ * Key = the underling target obseverd object (array, object etc)
+ * Value = a map:
+ *    Key = The key of a property on the target object
+ *    Value = A set of observer functions passed via 'autorun'
+ */
 const targetPropertyToComputed = new Map();
-
+/*
+ * Just a map of all the autoruns
+ */
 const computeds = new Map();
-
+/*
+ * A set of all autoruns that need to be run this 'tick'
+ */
 const dirtyComputations = new Set();
 
 let recomputeTimeout = null;
-let runningComputation = null;
+let runningComputation = null; 
+let id = 0;
 
-export const observable = target => {
+/*
+ * Public api
+ */
+export const observable = target => { 
   return toObservable(target);
 };
 
-export const observe = () => {};
-
-export const unobserve = (target) => {
-  console.log("ToDo");
-  return target;
-}
-
-export const autorun = (fn,name="unknown") => {
-  const observer = {fn,name};
+export const autorun = (fn, name = "unknown") => {
+  const observer = { fn, name };
+  //Save them, for later...?
   computeds.set(fn, observer);
-  return runComputed(observer);
+  runComputed(observer);
+  return removeAutorun(observer);
 };
 
-var logger = m => console.log(m);
-
+/*
+ * TODO Use this to memozie?
+ */
 export function computed(target, key, descriptor) {
+  //NOOP
   return descriptor;
 }
+
+export const reset = () => {
+  targetPropertyToComputed.clear();
+  computeds.clear();
+  dirtyComputations.clear();
+  recomputeTimeout = null;
+  runningComputation = null;
+  id = 0;
+}
+
+/*
+ * Remove autorun from all
+ */
+const removeAutorun = observer => () => {
+  targetPropertyToComputed.forEach(target => {
+    target.forEach(keySet => {
+      keySet.delete(observer);
+    });
+  });
+  computeds.delete(observer.fn);
+};
 
 const runComputed = observer => {
   runningComputation = observer;
@@ -42,26 +82,26 @@ const runComputed = observer => {
 /*
  * Called whenever a property is accessed on an observable
  */
-
 const registerPropertyAccessToComputation = (target, key) => {
   if (runningComputation) {
     const targetObj = targetPropertyToComputed.get(target);
     let propertySet = targetObj.get(key);
     if (!propertySet) {
       propertySet = new Set();
-      targetObj.set(key,propertySet);
+      targetObj.set(key, propertySet);
     }
     propertySet.add(runningComputation);
-    console.log(targetObj);    
   }
 };
 
+/*
+ * Copy all recomputations for target/key when it changes
+ * Trigger them to run on next event loop
+ */
 const checkRecomputationNeeded = (target, key) => {
-  // console.log('checking...');
   const computations = targetPropertyToComputed.get(target).get(key);
-  // console.log(computations);
   if (computations) {
-    computations.forEach(dirtyComputations.add,dirtyComputations);
+    computations.forEach(dirtyComputations.add, dirtyComputations);
     if (recomputeTimeout == null)
       recomputeTimeout = setTimeout(recomputeComputations, 0);
   }
@@ -76,42 +116,39 @@ const recomputeComputations = () => {
   recomputeTimeout = null;
 };
 
-let id = 0;
+/*
+ * Wrap an object in a Proxy, and return it
+ */
 const toObservable = targetObj => {
   targetObj.__id__ = id++;
-  // console.log(targetObj);
   const proxy = new Proxy(targetObj, {
     get: (target, key, receiver) => {
-      // console.log('!',target,key);
       if (key === "__target__") {
         return target;
       }
-      if (key === "unobserve") {
-        return () => unobserve(target);
-      }
+      // if (key === "unobserve") {
+      //   return () => unobserve(target);
+      // }
       const result = Reflect.get(target, key, receiver);
-      if (result && Object.getOwnPropertyDescriptor(target, key).get) {
-        //TODO handle this?
-      }
+      // TODO handle this?
+      // if (result && Object.getOwnPropertyDescriptor(target, key).get) {
+      // }
       registerPropertyAccessToComputation(target, key);
       if (runningComputation && isObject(result)) {
-        console.log("make nested:"+key.toString());
         const observableResult = observable(result);
         Reflect.set(target, key, observableResult, receiver);
-        return observableResult
+        return observableResult;
       }
-      //console.log(`Get ${key.toString()} = ${result}`);
       return result;
     },
     set: (target, key, value, receiver) => {
-      // console.log(`Set ${key.toString()} = ${value}`);
       checkRecomputationNeeded(target, key);
       const result = Reflect.set(target, key, value, receiver);
       // console.log(result);
       return result;
     }
+    // Apparently doesnt do what you think it does...
     // ,apply: (target, thisArg, argumentsList) => {
-    //   console.log("!! target");
     //   // if (target === "unobserve") {
     //   //   return unobserve(target.__target__);
     //   // }
@@ -121,6 +158,7 @@ const toObservable = targetObj => {
   return proxy;
 };
 
+// Util stuff
 const iterateObjectGraph = node => {
   if (isArray(node)) {
   } else if (isObject(node)) {
@@ -129,5 +167,3 @@ const iterateObjectGraph = node => {
 
 const isArray = obj => Array.isArray;
 const isObject = obj => obj === Object(obj);
-
-// inside getter, on child property change, trigger dirty on self

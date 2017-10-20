@@ -1,8 +1,8 @@
 {
   "presets": [
-    ["latest", {
-      "es2015": {
-        "modules": false
+    ["env", {
+      "targets": {
+        "node": "8.5"
       }
     }]
   ],

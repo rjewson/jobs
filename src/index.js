@@ -1,1 +1,1 @@
-export { observable, observe, autorun, computed } from "./jobs.js"
+export { observable, autorun, computed } from "./jobs.js"

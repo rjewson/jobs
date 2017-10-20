@@ -1,29 +1,30 @@
+"use strict";
+
 var test = require("tape");
+var { observable, autorun, computed } = require("../dist/jobs.js");
 
-var _require = require("../dist/jobs.js"),
-    observable = _require.observable,
-    observe = _require.observe,
-    autorun = _require.autorun,
-    computed = _require.computed;
+let obs;
 
-// test("Basic Test 1", (t) => {
-//   t.plan(2);
+const delay = (t = 0) => new Promise(r => setTimeout(r, t));
 
-//   let obs = observable({
-//     a: 1
-//   });
+test("Basic Test 1", async t => {
+  obs = observable({
+    a: 1
+  });
 
-//   const result = [1,2];
-//   let testRun = 0;
+  const result = [1, 2];
+  let testRun = 0;
 
-//   autorun(() => {
-//     t.equal(obs.a,result[testRun++]);
-//   });
+  const cleanup = autorun(() => {
+    t.equal(obs.a, result[testRun++]);
+  });
 
-//   setTimeout(() => {
-//     obs.a = 2;
-//   }, 1);
-// });
+  // await delay();
+  obs.a = 2;
+  await delay();
+  cleanup();
+  t.end();
+});
 
 var o = observable({
   a: 1,
@@ -58,7 +59,7 @@ var o = observable({
 //   console.log("Len=" + o.len);
 // }, "Calc Len");
 
-var obsNested = autorun(function () {
+const obsNested = autorun(() => {
   console.log("F=" + o.d.e.f);
 }, "Nested");
 o.d.e.f = 11;
@@ -66,6 +67,8 @@ o.d.e.f = 11;
 
 o.c.push(1);
 o.c.push(1);
+
+obsNested();
 
 // console.log(o.unobserve());
 //o.c.pop();

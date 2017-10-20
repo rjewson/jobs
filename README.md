@@ -7,6 +7,10 @@ Wrap object graphs with an observable proxy.  Then create MobX like autoruns aro
 Todo:
 - Memoization
 
+## Examples
+
+A basic example with getters.
+
 ```js
 var { observable, autorun } = require("jobs.js");
 
@@ -39,6 +43,8 @@ fruit.apples = 6;
 
 ```
 
+Deep nested objects are also handled.
+
 ```js
 var o = observable({
   a: []
@@ -52,6 +58,16 @@ o.a.push(1);
 
 // Len = 1
 ```
+
+## API
+
+### observable(target)
+
+Wraps the target is an observable proxy.  Target can be composed of [] or {} nested to any depth.  You can access the underlying target if you ever need to via the __target__ property.  The observable can be mutated after creation.
+
+### autorun(fn,?name)
+
+Creates an autorun observer (like Mobx).  The function fn will be exected once at creation, and all its dependancies tracked.  When these dependacies change, the function will re-run.  Name is an optional paramenter.  Autorun returns a function that cancels the observer internally, use this to clean up unneed autoruns.
 
 Reference:
 - http://www.knockmeout.net/2014/05/knockout-dependency-detection.html

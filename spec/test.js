@@ -1,31 +1,35 @@
 var test = require("tape");
-var { observable, observe, autorun, computed } = require("../dist/jobs.js");
+var { observable, autorun, computed } = require("../dist/jobs.js");
 
-// test("Basic Test 1", (t) => {
-//   t.plan(2);
+let obs;
 
-//   let obs = observable({
-//     a: 1
-//   });
+const delay = (t=0) => new Promise(r => setTimeout(r, t));
 
-//   const result = [1,2];
-//   let testRun = 0;
+test("Basic Test 1", async t => {
+  obs = observable({
+    a: 1
+  });
 
-//   autorun(() => {
-//     t.equal(obs.a,result[testRun++]);
-//   });
+  const result = [1, 2];
+  let testRun = 0;
 
-//   setTimeout(() => {
-//     obs.a = 2;
-//   }, 1);
-// });
+  const cleanup = autorun(() => {
+    t.equal(obs.a, result[testRun++]);
+  });
+
+  // await delay();
+  obs.a = 2;
+  await delay();
+  cleanup();  
+  t.end();
+});
 
 var o = observable({
   a: 1,
   b: 1,
   c: [],
   d: {
-    e:{
+    e: {
       f: 10
     }
   },
@@ -61,6 +65,8 @@ o.d.e.f = 11;
 
 o.c.push(1);
 o.c.push(1);
+
+obsNested();
 
 // console.log(o.unobserve());
 //o.c.pop();
